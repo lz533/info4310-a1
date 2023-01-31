@@ -1,0 +1,124 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://d3js.org/topojson.v3.min.js"></script>
+
+  <style>
+    .gridlines line {
+      stroke: #bbb;
+    }
+
+    .gridlines .domain {
+      stroke: none;
+    }
+  </style>
+  <title>INFO 4310 - A1</title>
+</head>
+
+
+<body>
+  <h1>INFO 4310 - Homework 1</h1>
+  <h3>Student: Longyi Zhang (lz533)</h3>
+
+  <p id="p2">
+    <b>Problem 2</b>
+    <br>
+    <svg id="p2" height=400 width=400 style="border:1px solid black;margin-bottom: 50px;">
+    </svg>
+    <script>
+
+
+      let render = async function () {
+        let df = await d3.csv('Street_Tree_List-2022-01-30_FILTERED')
+        let dfRaw = await d3.csv('Street_Tree_List-2022-01-30_RAW')
+        console.log(df)
+        console.log(dfRaw)
+      }
+      render()
+        // .then(
+        //   data => {
+
+        //     // svg setup
+        //     const svg = d3.select('svg#p2');
+        //     const width = svg.attr('width');
+        //     const height = svg.attr('height');
+        //     const margins = { top: 10, right: 10, bottom: 50, left: 50 };
+
+
+        //     let chartArea = svg.append('g') // append a <g> tag
+        //       .attr('transform', `translate(${margins.left},${margins.top})`);
+        //     const chartWidth = width - margins.left - margins.right;
+        //     const chartHeight = height - margins.top - margins.bottom;
+        //     // console.log(chartWidth);
+        //     // console.log(chartHeight)
+
+        //     data.forEach((d, i) => {
+        //       d['day'] = Number(d['Release Day']);
+        //       d['trans'] = Number(d['Transistors(million)']);
+        //     })
+
+        //     //scale setup
+        //     const dayExtent = d3.extent(data, d => d['day']);
+        //     const transExtent = d3.extent(data, d => d['trans']);
+        //     const xScale = d3.scaleLinear().domain(dayExtent).range([0, chartWidth]);
+        //     // const yScale = d3.scaleLinear()
+        //     const yScale = d3.scaleLog()
+        //       .domain(transExtent)
+        //       .range([chartHeight, 0]); //inverse y-range
+
+        //     //c. axes & gridlines
+        //     let leftAxis = d3.axisLeft(yScale);
+        //     svg.append('g')
+        //       .attr('transform', `translate(${margins.left - 10},${margins.top})`)
+        //       .call(leftAxis);
+
+        //     let leftGridlines = d3.axisLeft(yScale)
+        //       .tickSize(-chartWidth - 10)
+        //       .tickFormat('');
+        //     svg.append('g')
+        //       .attr('class', 'gridlines')
+        //       .attr('transform', `translate(${margins.left - 10},${margins.top})`)
+        //       .call(leftGridlines);
+
+        //     let bottomAxis = d3.axisBottom(xScale);
+        //     svg.append('g')
+        //       .attr('transform', `translate(${margins.left},${chartHeight + margins.top + 10})`)
+        //       .call(bottomAxis);
+
+        //     let bottomGridlines = d3.axisBottom(xScale)
+        //       .tickSize(-chartHeight - 10)
+        //       .tickFormat('');
+        //     svg.append('g')
+        //       .attr('class', 'gridlines')
+        //       .attr('class', 'var')
+        //       .attr('transform', `translate(${margins.left},${margins.top + chartHeight + 10})`)
+        //       .call(bottomGridlines);
+
+        //     // d. drawing circles
+        //     data.forEach((d, i) => {
+        //       chartArea.append('circle')
+        //         .attr('cx', xScale(d['day']))
+        //         .attr('cy', yScale(d['trans']))
+        //         .attr('r', 3)
+        //         .style('fill', '#00004C')
+        //         .attr('opacity', 0.3)
+
+        //       // e. logarithmic transformation
+
+
+
+
+        //     });
+
+        //   }
+        // )
+
+    </script>
+  </p>
+
+</body>
+
+</html>
