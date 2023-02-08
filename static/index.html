@@ -20,6 +20,12 @@
       stroke: #fff;
       stroke-width: 2;
     }
+
+    .mini {
+      fill: #eee;
+      stroke: #fff;
+      stroke-width: 1;
+    }
   </style>
   <title>INFO 4310 - A1</title>
 </head>
@@ -33,7 +39,7 @@
     <svg id="main" height=900 width=1080 style="border:1px solid black;margin-bottom: 0;">
     </svg>
 
-    <svg id="aux" height=720 width=1080 style="border:1px solid black;margin-bottom: 50px;">
+    <svg id="aux" height=800 width=1080 style="border:1px solid black;margin-bottom: 50px;">
     </svg>
     <script>
 
@@ -49,9 +55,9 @@
 
       // set up auxiliary vis
       const aux = d3.select("#aux")
-      const auxMargin = { t: 10, r: 10, b: 10, l: 10 }
-      // const auxWidth = aux.attr("width") - auxMargin.l - auxMargin.r
-      // const auxHeight = aux.attr("height") - auxMargin.t - auxMargin.b
+      const auxMargin = { t: 10, r: 10, b: 50, l: 10 }
+      const auxWidth = aux.attr("width") / 3 - auxMargin.l - auxMargin.r
+      const auxHeight = aux.attr("height") / 2 - auxMargin.t - auxMargin.b
       // const plot = aux.append("g")
       //   .attr("transform", `translate(${auxMargin.l},${auxMargin.t})`)
 
@@ -70,9 +76,15 @@
           .attr("class", "neighborhood")
           .attr("d", path)
 
+        // separate projection and paths for auxiliary vis
+        let auxProjection = d3.geoAlbersUsa().fitSize([auxWidth, auxHeight], neighborhoods)
+        let auxPath = d3.geoPath().projection(auxProjection)
+
         // preprocessing of loaded tree dataset for visualisation, in addition to preprocessing to the .csv files
         df.forEach(d => {
           d.Position = projection([d.Longitude, d.Latitude])
+          d.Aux_Position = auxProjection([d.Longitude, d.Latitude])
+
         })
 
         // sum up tree characteristics by species
@@ -100,8 +112,7 @@
 
         /*********************** TODO: Main Vis **********************/
         // layer of all trees in the dataset
-        viewport.selectAll("circle.normal").data(df)
-          .join("circle")
+        viewport.selectAll("circle.normal").data(df).join("circle")
           .attr("class", "normal")
           .attr("cx", d => d.Position[0])
           .attr("cy", d => d.Position[1])
@@ -110,8 +121,7 @@
           .attr("opacity", 0.2)
 
         // trees from the top species
-        viewport.selectAll("circle.top").data(df.filter(d => topSpecies.includes(d.qSpecies)))
-          .join("circle")
+        viewport.selectAll("circle.top").data(df.filter(d => topSpecies.includes(d.qSpecies))).join("circle")
           .attr("class", "top")
           .attr("cx", d => d.Position[0])
           .attr("cy", d => d.Position[1])
@@ -159,6 +169,58 @@
           .text(d => d[2])
 
 
+
+
+        /*********************** TODO: Aux Vis **********************/
+
+        aux.append("line") // horizontal line
+          .attr("x1", 0)
+          .attr("x2", aux.attr("width"))
+          .attr("y1", aux.attr("height") / 2)
+          .attr("y2", aux.attr("height") / 2)
+          .style("stroke", "#000")
+        for (i = 0; i < 2; i++) {
+          aux.append("line") // Vertical line
+            .attr("x1", aux.attr("width") * (i + 1) / 3)
+            .attr("x2", aux.attr("width") * (i + 1) / 3)
+            .attr("y1", 0)
+            .attr("y2", aux.attr("height"))
+            .style("stroke", "#888")
+        }
+
+        top.forEach(function (d, i) {
+          let xBias = 0 + aux.attr("width") / 3 * ((i + 1) % 3)
+          let yBias = 0 + aux.attr("height") / 2 * Math.floor((i + 1) / 3)
+          console.log(`${xBias} - ${yBias}`)
+          let tile = aux.append('g')
+            .attr('transform', `translate(${auxMargin.l + xBias},${auxMargin.t + yBias})`)
+
+
+          tile.selectAll("path.neighborhood").data(neighborhoods.features).join("path")
+            .attr("class", "mini")
+            .attr("d", auxPath)
+
+          tile.selectAll('circle.auxMark').data(d[1]).join('circle')
+            .attr("class", "auxMark")
+            .attr("cx", data => data.Aux_Position[0])
+            .attr("cy", data => data.Aux_Position[1])
+            .attr("r", 1)
+            .attr("fill", speciesScale(d[0]))
+            .attr("opacity", 0.5)
+
+          tile.append("text")
+            .attr("class", "auxLabel")
+            .attr("x", auxWidth / 2)
+            .attr("y", auxHeight + 10)
+            .attr("fill", speciesScale(d[0]))
+            .attr("text-anchor", "middle")
+            .attr("alignment-baseline", "middle")
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "1.2em")
+            .text(d[0])
+
+
+        })
       }
       render()
 
