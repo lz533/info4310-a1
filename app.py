@@ -5,7 +5,7 @@ app = Flask(__name__)
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/',
                           prefix='/',
                           index_file='index.html',
-                          autofresh=True)
+                          autorefresh=True)
 
 
 @app.route('/test', methods=['GET'])

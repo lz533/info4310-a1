@@ -14,6 +14,12 @@
     .gridlines .domain {
       stroke: none;
     }
+
+    .neighborhood {
+      fill: #eee;
+      stroke: #fff;
+      stroke-width: 2;
+    }
   </style>
   <title>INFO 4310 - A1</title>
 </head>
@@ -23,29 +29,73 @@
   <h1>INFO 4310 - Homework 1</h1>
   <h3>Student: Longyi Zhang (lz533)</h3>
 
-  <p id="p2">
-    <b>Problem 2</b>
-    <br>
-    <svg id="p2" height=400 width=400 style="border:1px solid black;margin-bottom: 50px;">
+  <div>
+    <svg id="main" height=900 width=900 style="border:1px solid black;margin-bottom: 50px;">
+    </svg>
+
+    <svg id="aux" height=600 width=800 style="border:3px solid purple;margin-bottom: 50px;">
     </svg>
     <script>
 
+      // set up map vis
+      const main = d3.select("#main")
+      const mainMargin = { t: 20, r: 20, b: 20, l: 20 }
+      const mainWidth = main.attr("width") - mainMargin.l - mainMargin.r
+      const mainHeight = main.attr("height") - mainMargin.t - mainMargin.b
+      const viewport = main.append("g")
+        .attr("transform", `translate(${mainMargin.l},${mainMargin.t})`)
+
+      // set up auxiliary vis
+      const aux = d3.select("#aux")
+      const auxMargin = { t: 20, r: 20, b: 20, l: 20 }
+      const auxWidth = aux.attr("width") - auxMargin.l - auxMargin.r
+      const auxHeight = aux.attr("height") - auxMargin.t - auxMargin.b
+      const plot = aux.append("g")
+        .attr("transform", `translate(${auxMargin.l},${auxMargin.t})`)
+
 
       let render = async function () {
-        let df = await d3.csv('Street_Tree_List-2022-01-30_FILTERED')
-        let dfRaw = await d3.csv('Street_Tree_List-2022-01-30_RAW')
+        let df = await d3.csv('Street_Tree_List-2022-01-30_ULTRAFILTERED.csv')
+        // let raw = await d3.csv('Street_Tree_List-2022-01-30_RAW.csv')
+        let sf = await d3.json("SF-Neighborhoods.geo.json")
+
         console.log(df)
-        console.log(dfRaw)
+
+        // map scaffolding
+        let neighborhoods = topojson.feature(sf, sf.objects.SFNeighborhoods)
+        let projection = d3.geoAlbersUsa().fitSize([mainWidth, mainHeight], neighborhoods)
+        let path = d3.geoPath().projection(projection)
+        main.selectAll("path.neighborhood").data(neighborhoods.features).join("path")
+          .attr("class", "neighborhood")
+          .attr("d", path)
+
+        // preprocessing of loaded tree dataset for visualisation, in addition to preprocessing to the .csv files
+        df.forEach(d => {
+          d.Position = projection([d.Longitude, d.Latitude])
+        })
+        // sum up tree characteristics by species
+        let bySpecies = Array.from(d3.group(df, d => d.qSpecies))
+        bySpecies.forEach(d => {
+          d[2] = d[1].length
+        })
+        bySpecies.sort((a, b) => { return -a[2] - -b[2] })
+        console.log((bySpecies))
+
+
+
+        // draw trees
+        main.selectAll("circle").data(df)
+          .join("circle")
+          .attr("cx", d => d.Position[0])
+          .attr("cy", d => d.Position[1])
+          .attr("r", 1)
+          .attr("fill", "forestgreen")
+          .attr("opacity", 0.4)
+
       }
       render()
-        // .then(
-        //   data => {
 
-        //     // svg setup
-        //     const svg = d3.select('svg#p2');
-        //     const width = svg.attr('width');
-        //     const height = svg.attr('height');
-        //     const margins = { top: 10, right: 10, bottom: 50, left: 50 };
+
 
 
         //     let chartArea = svg.append('g') // append a <g> tag
@@ -117,7 +167,7 @@
         // )
 
     </script>
-  </p>
+  </div>
 
 </body>
 
