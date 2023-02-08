@@ -30,33 +30,34 @@
   <h3>Student: Longyi Zhang (lz533)</h3>
 
   <div>
-    <svg id="main" height=900 width=900 style="border:1px solid black;margin-bottom: 50px;">
+    <svg id="main" height=900 width=1080 style="border:1px solid black;margin-bottom: 0;">
     </svg>
 
-    <svg id="aux" height=600 width=800 style="border:3px solid purple;margin-bottom: 50px;">
+    <svg id="aux" height=720 width=1080 style="border:1px solid black;margin-bottom: 50px;">
     </svg>
     <script>
 
       // set up map vis
       const main = d3.select("#main")
-      const mainMargin = { t: 20, r: 20, b: 20, l: 20 }
+      const mainMargin = { t: 20, r: 200, b: 20, l: 20 }
       const mainWidth = main.attr("width") - mainMargin.l - mainMargin.r
       const mainHeight = main.attr("height") - mainMargin.t - mainMargin.b
       const viewport = main.append("g")
         .attr("transform", `translate(${mainMargin.l},${mainMargin.t})`)
+      const mainLegends = main.append("g")
+        .attr("transform", "translate(770,300)")
 
       // set up auxiliary vis
       const aux = d3.select("#aux")
-      const auxMargin = { t: 20, r: 20, b: 20, l: 20 }
-      const auxWidth = aux.attr("width") - auxMargin.l - auxMargin.r
-      const auxHeight = aux.attr("height") - auxMargin.t - auxMargin.b
-      const plot = aux.append("g")
-        .attr("transform", `translate(${auxMargin.l},${auxMargin.t})`)
+      const auxMargin = { t: 10, r: 10, b: 10, l: 10 }
+      // const auxWidth = aux.attr("width") - auxMargin.l - auxMargin.r
+      // const auxHeight = aux.attr("height") - auxMargin.t - auxMargin.b
+      // const plot = aux.append("g")
+      //   .attr("transform", `translate(${auxMargin.l},${auxMargin.t})`)
 
-
+      // main course
       let render = async function () {
         let df = await d3.csv('Street_Tree_List-2022-01-30_ULTRAFILTERED.csv')
-        // let raw = await d3.csv('Street_Tree_List-2022-01-30_RAW.csv')
         let sf = await d3.json("SF-Neighborhoods.geo.json")
 
         console.log(df)
@@ -65,7 +66,7 @@
         let neighborhoods = topojson.feature(sf, sf.objects.SFNeighborhoods)
         let projection = d3.geoAlbersUsa().fitSize([mainWidth, mainHeight], neighborhoods)
         let path = d3.geoPath().projection(projection)
-        main.selectAll("path.neighborhood").data(neighborhoods.features).join("path")
+        viewport.selectAll("path.neighborhood").data(neighborhoods.features).join("path")
           .attr("class", "neighborhood")
           .attr("d", path)
 
@@ -73,24 +74,90 @@
         df.forEach(d => {
           d.Position = projection([d.Longitude, d.Latitude])
         })
+
         // sum up tree characteristics by species
         let bySpecies = Array.from(d3.group(df, d => d.qSpecies))
         bySpecies.forEach(d => {
           d[2] = d[1].length
+          d[3] = d3.mean(d[1], tree => tree.DBH)
         })
-        bySpecies.sort((a, b) => { return -a[2] - -b[2] })
-        console.log((bySpecies))
+        bySpecies.sort((a, b) => { return -a[2] - -b[2] }) // sort species by number of trees in descending order
+        let top = bySpecies.slice(0, 5) // top 10 species by tree count in SF, may change
+        let topSpecies = top.map(d => d[0])
+        top.forEach(d => {
+          d[3] = d3.mean(d[1], tree => tree.DBH)
+        })
+        console.log((top))
+        console.log((topSpecies))
 
 
 
-        // draw trees
-        main.selectAll("circle").data(df)
+        // additional variables
+        let meanDBH = d3.mean(df, d => d.DBH)
+        let speciesScale = d3.scaleOrdinal(topSpecies, d3.schemeCategory10)
+
+
+
+        /*********************** TODO: Main Vis **********************/
+        // layer of all trees in the dataset
+        viewport.selectAll("circle.normal").data(df)
           .join("circle")
+          .attr("class", "normal")
           .attr("cx", d => d.Position[0])
           .attr("cy", d => d.Position[1])
-          .attr("r", 1)
-          .attr("fill", "forestgreen")
-          .attr("opacity", 0.4)
+          .attr("r", 2)
+          .attr("fill", '#ccc')
+          .attr("opacity", 0.2)
+
+        // trees from the top species
+        viewport.selectAll("circle.top").data(df.filter(d => topSpecies.includes(d.qSpecies)))
+          .join("circle")
+          .attr("class", "top")
+          .attr("cx", d => d.Position[0])
+          .attr("cy", d => d.Position[1])
+          .attr("r", 2)
+          .attr("fill", d => speciesScale(d.qSpecies))
+          .attr("opacity", 0.5)
+
+        // legends
+        mainLegends.append("text")
+          .attr("class", "mainTitle")
+          .attr("x", 30)
+          .attr("y", 40)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.2em')
+          .text('Number of Trees by Species')
+
+        mainLegends.selectAll("circle.mainMark").data(topSpecies).join("circle")
+          .attr("class", "mainMark")
+          .attr("cx", 20)
+          .attr("cy", (d, i) => 80 + 30 * i)
+          .attr("r", 10)
+          .attr("fill", d => speciesScale(d))
+
+        mainLegends.selectAll("text.mainLabel").data(topSpecies).join("text")
+          .attr("class", "mainLabel")
+          .attr("x", 40)
+          .attr("y", (d, i) => 80 + 30 * i)
+          .attr("fill", d => speciesScale(d))
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .text(d => d)
+
+        mainLegends.selectAll("text.mainFigure").data(top).join("text")
+          .attr("class", "mainFigure")
+          .attr("x", 250)
+          .attr("y", (d, i) => 80 + 30 * i)
+          .attr("fill", d => speciesScale(d[0]))
+          .attr("text-anchor", "right")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .text(d => d[2])
+
 
       }
       render()
@@ -98,73 +165,6 @@
 
 
 
-        //     let chartArea = svg.append('g') // append a <g> tag
-        //       .attr('transform', `translate(${margins.left},${margins.top})`);
-        //     const chartWidth = width - margins.left - margins.right;
-        //     const chartHeight = height - margins.top - margins.bottom;
-        //     // console.log(chartWidth);
-        //     // console.log(chartHeight)
-
-        //     data.forEach((d, i) => {
-        //       d['day'] = Number(d['Release Day']);
-        //       d['trans'] = Number(d['Transistors(million)']);
-        //     })
-
-        //     //scale setup
-        //     const dayExtent = d3.extent(data, d => d['day']);
-        //     const transExtent = d3.extent(data, d => d['trans']);
-        //     const xScale = d3.scaleLinear().domain(dayExtent).range([0, chartWidth]);
-        //     // const yScale = d3.scaleLinear()
-        //     const yScale = d3.scaleLog()
-        //       .domain(transExtent)
-        //       .range([chartHeight, 0]); //inverse y-range
-
-        //     //c. axes & gridlines
-        //     let leftAxis = d3.axisLeft(yScale);
-        //     svg.append('g')
-        //       .attr('transform', `translate(${margins.left - 10},${margins.top})`)
-        //       .call(leftAxis);
-
-        //     let leftGridlines = d3.axisLeft(yScale)
-        //       .tickSize(-chartWidth - 10)
-        //       .tickFormat('');
-        //     svg.append('g')
-        //       .attr('class', 'gridlines')
-        //       .attr('transform', `translate(${margins.left - 10},${margins.top})`)
-        //       .call(leftGridlines);
-
-        //     let bottomAxis = d3.axisBottom(xScale);
-        //     svg.append('g')
-        //       .attr('transform', `translate(${margins.left},${chartHeight + margins.top + 10})`)
-        //       .call(bottomAxis);
-
-        //     let bottomGridlines = d3.axisBottom(xScale)
-        //       .tickSize(-chartHeight - 10)
-        //       .tickFormat('');
-        //     svg.append('g')
-        //       .attr('class', 'gridlines')
-        //       .attr('class', 'var')
-        //       .attr('transform', `translate(${margins.left},${margins.top + chartHeight + 10})`)
-        //       .call(bottomGridlines);
-
-        //     // d. drawing circles
-        //     data.forEach((d, i) => {
-        //       chartArea.append('circle')
-        //         .attr('cx', xScale(d['day']))
-        //         .attr('cy', yScale(d['trans']))
-        //         .attr('r', 3)
-        //         .style('fill', '#00004C')
-        //         .attr('opacity', 0.3)
-
-        //       // e. logarithmic transformation
-
-
-
-
-        //     });
-
-        //   }
-        // )
 
     </script>
   </div>
