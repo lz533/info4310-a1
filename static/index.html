@@ -41,11 +41,14 @@
 
     <svg id="aux" height=800 width=1080 style="border:1px solid black;margin-bottom: 50px;">
     </svg>
+
+    <svg id="pies" height=1000 width=1080 style="margin-bottom: 50px;">
+    </svg>
     <script>
 
       // set up map vis
       const main = d3.select("#main")
-      const mainMargin = { t: 20, r: 200, b: 20, l: 20 }
+      const mainMargin = { t: 60, r: 200, b: 20, l: 20 }
       const mainWidth = main.attr("width") - mainMargin.l - mainMargin.r
       const mainHeight = main.attr("height") - mainMargin.t - mainMargin.b
       const viewport = main.append("g")
@@ -58,8 +61,17 @@
       const auxMargin = { t: 10, r: 10, b: 50, l: 10 }
       const auxWidth = aux.attr("width") / 3 - auxMargin.l - auxMargin.r
       const auxHeight = aux.attr("height") / 2 - auxMargin.t - auxMargin.b
+      // // iteratively generate viewports later
       // const plot = aux.append("g")
       //   .attr("transform", `translate(${auxMargin.l},${auxMargin.t})`)
+
+      // set up pie charts
+      const pies = d3.select("#pies")
+      const piesMargin = { t: 20, r: 20, b: 20, l: 20 }
+      // const piesWidth = pies.attr("width") - piesMargin.l - piesMargin.r
+      // const piesHeight = pies.attr("height") - piesMargin.t - piesMargin.b
+      const pieParty = pies.append("g")
+        .attr("transform", `translate(${piesMargin.l},${piesMargin.t})`)
 
       // main course
       let render = async function () {
@@ -89,26 +101,37 @@
 
         // sum up tree characteristics by species
         let bySpecies = Array.from(d3.group(df, d => d.qSpecies))
+        let byCaretaker = Array.from(d3.group(df, d => d.qCaretaker))
+
         bySpecies.forEach(d => {
           d[2] = d[1].length
           d[3] = d3.mean(d[1], tree => tree.DBH)
         })
-        bySpecies.sort((a, b) => { return -a[2] - -b[2] }) // sort species by number of trees in descending order
-        let top = bySpecies.slice(0, 5) // top 10 species by tree count in SF, may change
+        bySpecies.sort((a, b) => -a[2] - -b[2]) // sort species by number of trees in descending order
+        let top = bySpecies.slice(0, 5) // top 5 species by tree count in SF
         let topSpecies = top.map(d => d[0])
         top.forEach(d => {
-          d[3] = d3.mean(d[1], tree => tree.DBH)
+          // mean DBH for datavis
+          d[3] = d3.mean(d[1], tree => tree.DBH).toFixed(1)
+          // maintainer breakdown for datavis, only Private and DPW has large number of trees
+          let private = 0
+          let dpw = 0
+          d[1].forEach(tree => {
+            if (tree.qCaretaker === "Private") { private++ }
+            else if (tree.qCaretaker === "DPW") { dpw++ }
+          })
+          d[4] = { "Private": private, "DPW": dpw, "Other Public": d[2] - private - dpw }
         })
-        console.log((top))
-        console.log((topSpecies))
-
-
+        let topDBH = top.map(d => d[3])
+        let topCaretaker = Object.keys(top[0][4])
+        console.log(top)
+        console.log(topCaretaker)
 
         // additional variables
-        let meanDBH = d3.mean(df, d => d.DBH)
+        let DBHScale = d3.scaleLinear([0, Math.max(...topDBH)], [0, 180])
+        let rimScale = d3.scaleLinear([0, Math.max(...topDBH)], [0, 10])
         let speciesScale = d3.scaleOrdinal(topSpecies, d3.schemeCategory10)
-
-
+        let caretakerScale = d3.scaleOrdinal().range(d3.schemeDark2)
 
         /*********************** TODO: Main Vis **********************/
         // layer of all trees in the dataset
@@ -129,6 +152,16 @@
           .attr("fill", d => speciesScale(d.qSpecies))
           .attr("opacity", 0.5)
 
+
+        main.append("text")
+          .attr("x", 20)
+          .attr("y", 50)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.5em')
+          .text('Figure 1.1: Distribution of trees from the 5 most populous species')
         // legends
         mainLegends.append("text")
           .attr("class", "mainTitle")
@@ -139,7 +172,7 @@
           .attr("alignment-baseline", "middle")
           .attr("font-family", "sans-serif")
           .attr("font-size", '1.2em')
-          .text('Number of Trees by Species')
+          .text('Number of trees by species')
 
         mainLegends.selectAll("circle.mainMark").data(topSpecies).join("circle")
           .attr("class", "mainMark")
@@ -178,23 +211,41 @@
           .attr("x2", aux.attr("width"))
           .attr("y1", aux.attr("height") / 2)
           .attr("y2", aux.attr("height") / 2)
-          .style("stroke", "#000")
+          .attr("stroke", "#000")
         for (i = 0; i < 2; i++) {
-          aux.append("line") // Vertical line
+          aux.append("line") // vertical line
             .attr("x1", aux.attr("width") * (i + 1) / 3)
             .attr("x2", aux.attr("width") * (i + 1) / 3)
             .attr("y1", 0)
             .attr("y2", aux.attr("height"))
-            .style("stroke", "#888")
+            .attr("stroke", "#888")
         }
+        aux.append("text")
+          .attr("x", 20)
+          .attr("y", 180)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.5em')
+          .text('Figure 1.2: Tree distribution')
 
+        aux.append("text")
+          .attr("x", 20)
+          .attr("y", 210)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.5em')
+          .text('for each species')
+
+        // render breakdown maps iteratively
         top.forEach(function (d, i) {
           let xBias = 0 + aux.attr("width") / 3 * ((i + 1) % 3)
           let yBias = 0 + aux.attr("height") / 2 * Math.floor((i + 1) / 3)
-          console.log(`${xBias} - ${yBias}`)
           let tile = aux.append('g')
             .attr('transform', `translate(${auxMargin.l + xBias},${auxMargin.t + yBias})`)
-
 
           tile.selectAll("path.neighborhood").data(neighborhoods.features).join("path")
             .attr("class", "mini")
@@ -208,7 +259,7 @@
             .attr("fill", speciesScale(d[0]))
             .attr("opacity", 0.5)
 
-          tile.append("text")
+          tile.append("text") // species name label
             .attr("class", "auxLabel")
             .attr("x", auxWidth / 2)
             .attr("y", auxHeight + 10)
@@ -219,8 +270,106 @@
             .attr("font-size", "1.2em")
             .text(d[0])
 
+        })
+
+        /*********************** TODO: Another Aux Vis **********************/
+        let pieWidth = 360
+        let pieHeight = 410
+        top.forEach(function (d, i) {
+          let xBias = 130 + pieWidth * ((i + 1) % 3)
+          let yBias = 0 + pieHeight * Math.floor((i + 1) / 3)
+          let pieHole = pieParty.append('g')
+            .attr('transform', `translate(${piesMargin.l + xBias},
+            ${piesMargin.t + pieHeight * 0.5 + yBias})`)
+          let pieText = pieParty.append('g')
+            .attr('transform', `translate(${piesMargin.l + xBias},${piesMargin.t + yBias})`)
+          let r = DBHScale(d[3])
+          let rim = rimScale(d[3])
+          let pie = d3.pie().value(data => data[1])
+          let pieCare = pie(Object.entries(d[4]))
+          let arcGenerator = d3.arc()
+            .innerRadius(0)
+            .outerRadius(r - rim - 2)
+
+          pieHole.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', r)
+            .attr('fill', '#704214')
+
+          pieHole.append('circle')
+            .attr('cx', 0)
+            .attr('cy', 0)
+            .attr('r', r - rim)
+            .attr('fill', '#fff')
+
+          pieHole.selectAll('hotPie').data(pieCare).join('path')
+            .attr("d", arcGenerator)
+            .attr("fill", d => caretakerScale(d.data[0]))
+            .attr("stroke", '#fff')
+            .attr('stroke-width', 0)
+
+          pieHole.selectAll('hotPie').data(pieCare).join('text')
+            .attr("transform", d => `translate(${arcGenerator.centroid(d)})`)
+            .attr("text-anchor", "middle")
+            .attr("font-size", 16)
+            .attr("font-family", 'sans-serif')
+            .attr("font-weight", 'bold')
+            .text(d => d.data[1])
+
+          pieHole.append("text") // species name label
+            .attr("class", "pieLabel")
+            .attr("x", 0)
+            .attr("y", pieHeight * 0.5)
+            .attr("fill", '#000')
+            .attr("text-anchor", "middle")
+            .attr("alignment-baseline", "middle")
+            .attr("font-family", "sans-serif")
+            .attr("font-size", "1.2em")
+            .text(`${d[0]} - ${d[3]}"`)
+
 
         })
+
+        // should have figured out how to add new line, eh?
+        pieParty.append("text")
+          .attr("x", 0)
+          .attr("y", 100)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.5em')
+          .text('Figure 2: Species breakdown')
+
+        pieParty.append("text")
+          .attr("x", 0)
+          .attr("y", 130)
+          .attr("fill", '#000')
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .attr("font-size", '1.5em')
+          .text('by caretaker and DBH')
+
+
+        pieParty.selectAll("rect.pieMark").data(topCaretaker).join("rect")
+          .attr("class", "pieMark")
+          .attr("x", 0)
+          .attr("y", (d, i) => 190 + 30 * i)
+          .attr("width", 20)
+          .attr("height", 20)
+          .attr("fill", d => caretakerScale(d))
+
+        pieParty.selectAll("text.mainLabel").data(topCaretaker).join("text")
+          .attr("class", "pieLabel")
+          .attr("x", 40)
+          .attr("y", (d, i) => 200 + 30 * i)
+          .attr("fill", d => caretakerScale(d))
+          .attr("text-anchor", "left")
+          .attr("alignment-baseline", "middle")
+          .attr("font-family", "sans-serif")
+          .text(d => d)
       }
       render()
 
